@@ -102,7 +102,7 @@ public class RDBMSConfiguration {
 	
 	private List<DataSourceProperty> dataSourceProps;
 
-	private List<DataSourceProperty> databaseProps;
+	private List<DatabaseProperty> databaseProps;
 
 	public String getUrl() {
 		return url;
@@ -421,13 +421,13 @@ public class RDBMSConfiguration {
 		this.dataSourceClassName = dataSourceClassName;
 	}
 
-	@XmlElementWrapper (name = "databaseProps")
+	@XmlElementWrapper (name = RDBMSDataSourceConstants.DATABASE_PROPS_NAME)
 	@XmlElement (name = "property")
-	public List<DataSourceProperty> getDatabaseProps() {
+	public List<DatabaseProperty> getDatabaseProps() {
 		return databaseProps;
 	}
 
-	public void setDatabaseProps(List<DataSourceProperty> databaseProps) {
+	public void setDatabaseProps(List<DatabaseProperty> databaseProps) {
 		this.databaseProps = databaseProps;
 	}
 	
@@ -513,4 +513,43 @@ public class RDBMSConfiguration {
 		}
 		
 	}
+
+	@XmlRootElement (name = "property")
+	public static class DatabaseProperty {
+
+		private boolean encrypted = true;
+
+		private String name;
+
+		private String value;
+
+		@XmlAttribute (name = "encrypted")
+		public boolean isEncrypted() {
+			return encrypted;
+		}
+
+		public void setEncrypted(boolean encrypted) {
+			this.encrypted = encrypted;
+		}
+
+		@XmlAttribute (name = "name")
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		@XmlValue
+		public String getValue() {
+			return value;
+		}
+
+		public void setValue(String value) {
+			this.value = value;
+		}
+
+	}
+	
 }

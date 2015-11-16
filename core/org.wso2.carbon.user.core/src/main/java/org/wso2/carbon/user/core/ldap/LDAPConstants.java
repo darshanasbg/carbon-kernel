@@ -26,7 +26,7 @@ public class LDAPConstants {
     public static final String GROUP_SEARCH_BASE = "GroupSearchBase";
     public static final String USER_NAME_LIST_FILTER = "UserNameListFilter";
     public static final String USER_NAME_ATTRIBUTE = "UserNameAttribute";
-    public static final String DISPLAY_NAME_ATTRIBUTE = "DisplayNameAttribute";
+    public static final String DISPLAY_NAME_ATTRIBUTE = "displayNameAttribute";
     public static final String DEFAULT_TENANT_USER_FILTER = "DefaultTenantUserFilter";
     public static final String USER_DN_PATTERN = "UserDNPattern";
     public static final String ROLE_DN_PATTERN = "RoleDNPattern";
@@ -70,10 +70,10 @@ public class LDAPConstants {
     public static final String PASSWORD_HASH_METHOD = "PasswordHashMethod";
 
     // Active Directory specific constants
-    public static final String ACTIVE_DIRECTORY_LDS_ROLE = "isADLDSRole";
-    public static final String ACTIVE_DIRECTORY_USER_ACCOUNT_CONTROL = "userAccountControl";
-    public static final String ACTIVE_DIRECTORY_MSDS_USER_ACCOUNT_DISSABLED = "msDS-UserAccountDisabled";
-    public static final String ACTIVE_DIRECTORY_UNICODE_PASSWORD_ATTRIBUTE = "unicodePwd";
+    public static final String ACTIVE_DIRECTORY_LDS_ROLE = "IsADLDSRole";
+    public static final String ACTIVE_DIRECTORY_USER_ACCOUNT_CONTROL = "UserAccountControl";
+    public static final String ACTIVE_DIRECTORY_MSDS_USER_ACCOUNT_DISSABLED = "MSDS-UserAccountDisabled";
+    public static final String ACTIVE_DIRECTORY_UNICODE_PASSWORD_ATTRIBUTE = "UnicodePwd";
     public static final String ACTIVE_DIRECTORY_DISABLED_NORMAL_ACCOUNT = Integer.toString(514);
 
     //KDC specific constants

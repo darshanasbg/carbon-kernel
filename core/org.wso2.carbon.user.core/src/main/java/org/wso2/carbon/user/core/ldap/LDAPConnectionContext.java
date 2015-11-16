@@ -26,11 +26,11 @@ import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.utils.CarbonUtils;
 
+import javax.naming.TimeLimitExceededException;
 import javax.naming.AuthenticationException;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.TimeLimitExceededException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
@@ -55,8 +55,6 @@ public class LDAPConnectionContext {
     private boolean readOnly = false;
 
     private static final String CONNECTION_TIME_OUT = "LDAPConnectionTimeout";
-
-    private static final String READ_TIME_OUT = "ReadTimeout";
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     public LDAPConnectionContext(RealmConfiguration realmConfig) throws UserStoreException {
@@ -153,18 +151,16 @@ public class LDAPConnectionContext {
         if (binaryAttribute != null) {
             environment.put(LDAPConstants.LDAP_ATTRIBUTES_BINARY, binaryAttribute);
         }
-
+        String readTimeout = realmConfig.getUserStoreProperty(UserCoreConstants.RealmConfig.LDAP_READ_TIMEOUT);
+        if(StringUtils.isNotEmpty(readTimeout)) {
+            environment.put("com.sun.jndi.ldap.read.timeout",readTimeout);
+        }
         //Set connect timeout if provided in configuration. Otherwise set default value
         String connectTimeout = realmConfig.getUserStoreProperty(CONNECTION_TIME_OUT);
-        String readTimeout = realmConfig.getUserStoreProperty(READ_TIME_OUT);
         if (connectTimeout != null && !connectTimeout.trim().isEmpty()) {
             environment.put("com.sun.jndi.ldap.connect.timeout", connectTimeout);
         } else {
             environment.put("com.sun.jndi.ldap.connect.timeout", "5000");
-        }
-
-        if(StringUtils.isNotEmpty(readTimeout)){
-            environment.put("com.sun.jndi.ldap.read.timeout",readTimeout);
         }
     }
 
@@ -333,8 +329,9 @@ public class LDAPConnectionContext {
                 throw e;
 
             } catch (TimeLimitExceededException e) {
-                throw new UserStoreException("TimeLimitExceeded : LDAP Read Timed Out");
-            }catch (NamingException e) {
+                throw new UserStoreException(UserCoreConstants.RealmConfig.READ_TIME_EXCEEDED + ": Time exceeded when reading the entry from " +
+                        "LDAP user store.");
+            } catch (NamingException e) {
                 log.error("Error obtaining connection to first Domain Controller." + e.getMessage(), e);
                 log.info("Trying to connect with other Domain Controllers");
 

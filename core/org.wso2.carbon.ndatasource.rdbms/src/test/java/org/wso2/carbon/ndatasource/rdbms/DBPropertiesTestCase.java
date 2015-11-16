@@ -34,8 +34,8 @@ public class DBPropertiesTestCase {
     @Test
     public void modifyDBConfig() throws DataSourceException {
         RDBMSConfiguration configuration = new RDBMSConfiguration();
-        List<RDBMSConfiguration.DataSourceProperty> propertyList = new ArrayList<>();
-        RDBMSConfiguration.DataSourceProperty property = new RDBMSConfiguration.DataSourceProperty();
+        List<RDBMSConfiguration.DatabaseProperty> propertyList = new ArrayList<>();
+        RDBMSConfiguration.DatabaseProperty property = new RDBMSConfiguration.DatabaseProperty();
         property.setName("SetFloatAndDoubleUseBinary");
         property.setValue("true");
         propertyList.add(property);

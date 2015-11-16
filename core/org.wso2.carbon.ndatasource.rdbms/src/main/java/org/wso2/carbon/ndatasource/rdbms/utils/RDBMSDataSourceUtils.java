@@ -203,10 +203,10 @@ public class RDBMSDataSourceUtils {
 		props.setDefaultCatalog(config.getDefaultCatalog());
 		props.setDriverClassName(config.getDriverClassName());
 		String username = config.getUsername();
-		if (null != username && !("").equals(username)) {
+		if (null != username && !username.isEmpty()) {
 			props.setUsername(username);
 			String password = config.getPassword();
-			if (null != password && !("").equals(password)) {
+			if (null != password && !password.isEmpty()) {
 				props.setPassword(password);
 			}
 		}
@@ -292,13 +292,13 @@ public class RDBMSDataSourceUtils {
 			handleExternalDataSource(props, config);
 		}
 		if (config.getDatabaseProps() != null) {
-			Properties properties = new Properties();
 			if (!config.getDatabaseProps().isEmpty()) {
-				for (RDBMSConfiguration.DataSourceProperty property : config.getDatabaseProps()) {
+				Properties properties = new Properties();
+				for (RDBMSConfiguration.DatabaseProperty property : config.getDatabaseProps()) {
 					properties.setProperty(property.getName(), property.getValue());
 				}
+				props.setDbProperties(properties);
 			}
-			props.setDbProperties(properties);
 		}
 		return props;
 	}
@@ -324,6 +324,7 @@ public class RDBMSDataSourceUtils {
                 }
 		    }
             result.putAll(tmpPropertiesObjects);
+
 		}
 		return result;
 	}

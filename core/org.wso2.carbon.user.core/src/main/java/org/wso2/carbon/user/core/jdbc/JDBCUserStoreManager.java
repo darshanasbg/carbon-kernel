@@ -27,13 +27,13 @@ import org.wso2.carbon.user.api.Property;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
+import org.wso2.carbon.user.core.UserStoreConfigConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.claim.ClaimManager;
 import org.wso2.carbon.user.core.common.AbstractUserStoreManager;
 import org.wso2.carbon.user.core.common.RoleContext;
 import org.wso2.carbon.user.core.dto.RoleDTO;
 import org.wso2.carbon.user.core.hybrid.HybridJDBCConstants;
-import org.wso2.carbon.user.core.jdbc.caseinsensitive.JDBCCaseInsensitiveConstants;
 import org.wso2.carbon.user.core.profile.ProfileConfigurationManager;
 import org.wso2.carbon.user.core.tenant.Tenant;
 import org.wso2.carbon.user.core.util.DatabaseUtil;
@@ -42,10 +42,20 @@ import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.dbcreator.DatabaseCreator;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
+import javax.naming.NamingException;
+import javax.naming.directory.InvalidAttributeIdentifierException;
+import javax.naming.directory.InvalidAttributeValueException;
+import javax.naming.directory.NoSuchAttributeException;
 import javax.sql.DataSource;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.*;
+import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLTimeoutException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -57,7 +67,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.security.SecureRandom;
 import java.util.Random;
 
 public class JDBCUserStoreManager extends AbstractUserStoreManager {
@@ -68,12 +77,8 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     private static final String QUERY_FILTER_STRING_ANY = "*";
     private static final String SQL_FILTER_STRING_ANY = "%";
     private static final char SQL_FILTER_CHAR_ESCAPE = '\\';
-    private static final String CASE_INSENSITIVE_USERNAME = "CaseInsensitiveUsername";
-    private static final String SHA_1_PRNG = "SHA1PRNG";
-
     protected DataSource jdbcds = null;
     protected Random random = new Random();
-
 
     public JDBCUserStoreManager() {
 
@@ -357,7 +362,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             if (isCaseSensitiveUsername()) {
                 sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USER_FILTER);
             } else {
-                sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_USER_FILTER_CASE_INSENSITIVE);
+                sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USER_FILTER_CASE_INSENSITIVE);
             }
 
             prepStmt = dbConnection.prepareStatement(sqlStmt);
@@ -763,11 +768,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
         userName = UserCoreUtil.removeDomainFromName(userName);
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROFILE_NAMES_FOR_USER);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_PROFILE_NAMES_FOR_USER_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROFILE_NAMES_FOR_USER_CASE_INSENSITIVE);
         }
+
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for retrieving  is null");
         }
@@ -800,11 +806,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
      *
      */
     public int getUserId(String username) throws UserStoreException {
+
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USERID_FROM_USERNAME);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_USERID_FROM_USERNAME_CASE_INSENSITIVE);
+        }else{
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USERID_FROM_USERNAME_CASE_INSENSITIVE);
         }
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for retrieving ID is null");
@@ -895,10 +902,10 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             throw new UserStoreException("Not allowed to perform this operation");
         }
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_TENANT_ID_FROM_USERNAME);
         } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_TENANT_ID_FROM_USERNAME_CASE_INSENSITIVE);
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_TENANT_ID_FROM_USERNAME_CASE_INSENSITIVE);
         }
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for retrieving ID is null");
@@ -941,7 +948,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             if (isCaseSensitiveUsername()) {
                 sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROPS_FOR_PROFILE);
             } else {
-                sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_PROPS_FOR_PROFILE_CASE_INSENSITIVE);
+                sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROPS_FOR_PROFILE_CASE_INSENSITIVE);
             }
             prepStmt = dbConnection.prepareStatement(sqlStmt);
             prepStmt.setString(1, userName);
@@ -955,6 +962,8 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                 String name = rs.getString(1);
                 String value = rs.getString(2);
                 if (Arrays.binarySearch(propertyNamesSorted, name) < 0) {
+                    continue;
+                } else if(value == null || value.isEmpty()){
                     continue;
                 }
                 map.put(name, value);
@@ -1110,11 +1119,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     public boolean doCheckExistingUser(String userName) throws UserStoreException {
 
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_IS_USER_EXISTING);
         } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_IS_USER_EXISTING_CASE_INSENSITIVE);
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_IS_USER_EXISTING_CASE_INSENSITIVE);
         }
+
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for is user existing null");
         }
@@ -1126,8 +1136,8 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             String uniquenesSql;
             if (isCaseSensitiveUsername()) {
                 uniquenesSql = realmConfig.getUserStoreProperty(JDBCRealmConstants.USER_NAME_UNIQUE);
-            } else {
-                uniquenesSql = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.USER_NAME_UNIQUE_CASE_INSENSITIVE);
+            }else {
+                uniquenesSql = realmConfig.getUserStoreProperty(JDBCRealmConstants.USER_NAME_UNIQUE_CASE_INSENSITIVE);
             }
             isExisting = isValueExisting(uniquenesSql, null, userName);
             if (log.isDebugEnabled()) {
@@ -1176,7 +1186,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             if (isCaseSensitiveUsername()) {
                 sqlstmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER);
             } else {
-                sqlstmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.SELECT_USER_CASE_INSENSITIVE);
+                sqlstmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER_CASE_INSENSITIVE);
             }
 
             if (log.isDebugEnabled()) {
@@ -1318,14 +1328,14 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER + "-" + type);
                     } else {
-                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .ADD_ROLE_TO_USER_CASE_INSENSITIVE + "-" + type);
                     }
                     if (sqlStmt2 == null) {
                         if (isCaseSensitiveUsername()) {
                             sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER);
                         } else {
-                            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                     .ADD_ROLE_TO_USER_CASE_INSENSITIVE);
                         }
                     }
@@ -1352,7 +1362,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_SHARED_ROLE_TO_USER);
                     } else {
-                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .ADD_SHARED_ROLE_TO_USER_CASE_INSENSITIVE);
                     }
                     DatabaseUtil.udpateUserRoleMappingWithExactParams(dbConnection, sqlStmt2,
@@ -1426,14 +1436,14 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                 if (isCaseSensitiveUsername()) {
                     sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE + "-" + type);
                 } else {
-                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
-                                    .ADD_USER_TO_ROLE_CASE_INSENSITIVE + "-" + type);
+                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE_CASE_INSENSITIVE
+                            + "-" + type);
                 }
                 if (sqlStmt2 == null) {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE);
                     } else {
-                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .ADD_USER_TO_ROLE_CASE_INSENSITIVE);
                     }
                 }
@@ -1530,15 +1540,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         return tenantId;
     }
 
-    /**
-     * JDBC User store supports bulk import.
-     *
-     * @return Always <code>true<code>.
-     */
-    public boolean isBulkImportSupported() {
-        return new Boolean(realmConfig.getUserStoreProperty("IsBulkImportSupported"));
-    }
-
+   
     public RealmConfiguration getRealmConfiguration() {
         return this.realmConfig;
     }
@@ -1639,7 +1641,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         if (isCaseSensitiveUsername()) {
             sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ON_DELETE_USER_REMOVE_USER_ROLE);
         } else {
-            sqlStmt1 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+            sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                     .ON_DELETE_USER_REMOVE_USER_ROLE_CASE_INSENSITIVE);
         }
         if (sqlStmt1 == null) {
@@ -1650,7 +1652,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         if (isCaseSensitiveUsername()) {
             sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ON_DELETE_USER_REMOVE_ATTRIBUTE);
         } else {
-            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                     .ON_DELETE_USER_REMOVE_ATTRIBUTE_CASE_INSENSITIVE);
         }
         if (sqlStmt2 == null) {
@@ -1660,8 +1662,8 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         String sqlStmt3;
         if (isCaseSensitiveUsername()) {
             sqlStmt3 = realmConfig.getUserStoreProperty(JDBCRealmConstants.DELETE_USER);
-        } else {
-            sqlStmt3 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.DELETE_USER_CASE_INSENSITIVE);
+        }else {
+            sqlStmt3 = realmConfig.getUserStoreProperty(JDBCRealmConstants.DELETE_USER_CASE_INSENSITIVE);
         }
         if (sqlStmt3 == null) {
             throw new UserStoreException("The sql statement for delete user is null");
@@ -1707,11 +1709,11 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         String sqlStmt1;
         if (isCaseSensitiveUsername()) {
             sqlStmt1 = realmConfig.getUserStoreProperty(isShared ? JDBCRealmConstants.REMOVE_USER_FROM_SHARED_ROLE :
-                    JDBCRealmConstants.REMOVE_USER_FROM_ROLE);
-        } else {
+                            JDBCRealmConstants.REMOVE_USER_FROM_ROLE);
+        }else {
             sqlStmt1 = realmConfig
-                    .getUserStoreProperty(isShared ? JDBCCaseInsensitiveConstants.REMOVE_USER_FROM_SHARED_ROLE_CASE_INSENSITIVE :
-                            JDBCCaseInsensitiveConstants.REMOVE_USER_FROM_ROLE_CASE_INSENSITIVE);
+                    .getUserStoreProperty(isShared ? JDBCRealmConstants.REMOVE_USER_FROM_SHARED_ROLE_CASE_INSENSITIVE :
+                            JDBCRealmConstants.REMOVE_USER_FROM_ROLE_CASE_INSENSITIVE);
         }
         if (sqlStmt1 == null) {
             throw new UserStoreException("The sql statement for remove user from role is null");
@@ -1723,25 +1725,25 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             String type = DatabaseCreator.getDatabaseType(dbConnection);
             String sqlStmt2 = null;
             if (!isShared) {
-                if (isCaseSensitiveUsername()) {
+
+                if (isCaseSensitiveUsername()){
                     sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE + "-" + type);
-                } else {
-                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.ADD_USER_TO_ROLE_CASE_INSENSITIVE
+                }else {
+                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE_CASE_INSENSITIVE
                             + "-" + type);
                 }
                 if (sqlStmt2 == null) {
-                    if (isCaseSensitiveUsername()) {
+                    if (isCaseSensitiveUsername()){
                         sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE);
-                    } else {
-                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
-                                .ADD_USER_TO_ROLE_CASE_INSENSITIVE);
+                    }else {
+                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_USER_TO_ROLE_CASE_INSENSITIVE);
                     }
                 }
             } else {
                 if (isCaseSensitiveUsername()) {
                     sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_SHARED_ROLE_TO_USER);
                 } else {
-                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                    sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                             .ADD_SHARED_ROLE_TO_USER_CASE_INSENSITIVE);
                 }
             }
@@ -1889,7 +1891,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants.REMOVE_ROLE_FROM_USER);
                     } else {
-                        sqlStmt1 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .REMOVE_ROLE_FROM_USER_CASE_INSENSITIVE);
                     }
                     if (sqlStmt1 == null) {
@@ -1908,7 +1910,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants.REMOVE_USER_FROM_SHARED_ROLE);
                     } else {
-                        sqlStmt1 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt1 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .REMOVE_USER_FROM_SHARED_ROLE_CASE_INSENSITIVE);
                     }
                     if (sqlStmt1 == null) {
@@ -1934,20 +1936,19 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                 Integer[] sharedTenantIds = breakdown.getSharedTenantids();
 
                 if (roles.length > 0) {
-
                     if (isCaseSensitiveUsername()) {
                         realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER + "-" + type);
                     } else {
-                        realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.ADD_ROLE_TO_USER_CASE_INSENSITIVE + "-" +
+                        realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER_CASE_INSENSITIVE + "-" +
                                 type);
                     }
                     if (sqlStmt2 == null) {
                         if (isCaseSensitiveUsername()) {
-                                                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER);
-                                                    } else {
-                                                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
-                                                                        .ADD_ROLE_TO_USER_CASE_INSENSITIVE);
-                                                    }
+                            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_ROLE_TO_USER);
+                        } else {
+                            sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
+                                    .ADD_ROLE_TO_USER_CASE_INSENSITIVE);
+                        }
                     }
                     if (sqlStmt2 == null) {
                         throw new UserStoreException(
@@ -1973,7 +1974,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                     if (isCaseSensitiveUsername()) {
                         sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_SHARED_ROLE_TO_USER);
                     } else {
-                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                        sqlStmt2 = realmConfig.getUserStoreProperty(JDBCRealmConstants
                                 .ADD_SHARED_ROLE_TO_USER_CASE_INSENSITIVE);
                     }
                     if (sqlStmt2 == null) {
@@ -2191,12 +2192,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
      */
     public void doUpdateCredentialByAdmin(String userName, Object newCredential)
             throws UserStoreException {
-
+        
         String sqlStmt;
         if (isCaseSensitiveUsername()) {
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PASSWORD);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.UPDATE_USER_PASSWORD_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PASSWORD_CASE_INSENSITIVE);
         }
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for delete user claim value is null");
@@ -2245,7 +2246,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             if (isCaseSensitiveUsername()) {
                 sqlstmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER);
             } else {
-                sqlstmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.SELECT_USER_CASE_INSENSITIVE);
+                sqlstmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.SELECT_USER_CASE_INSENSITIVE);
             }
 
             if (log.isDebugEnabled()) {
@@ -2290,7 +2291,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
     private String generateSaltValue() {
         String saltValue = null;
         try {
-            SecureRandom secureRandom = SecureRandom.getInstance(SHA_1_PRNG);
+            SecureRandom secureRandom = SecureRandom.getInstance(UserCoreConstants.SHA_1_PRNG);
             byte[] bytes = new byte[16];
             //secureRandom is automatically seeded by calling nextBytes
             secureRandom.nextBytes(bytes);
@@ -2413,11 +2414,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
      */
     protected void updateProperty(Connection dbConnection, String userName, String propertyName,
                                   String value, String profileName) throws UserStoreException {
+
         String sqlStmt;
         if (isCaseSensitiveUsername()) {
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PROPERTY);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.UPDATE_USER_PROPERTY_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.UPDATE_USER_PROPERTY_CASE_INSENSITIVE);
         }
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for add user property sql is null");
@@ -2441,11 +2443,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
      */
     protected void deleteProperty(Connection dbConnection, String userName, String propertyName,
                                   String profileName) throws UserStoreException {
+
         String sqlStmt;
         if (isCaseSensitiveUsername()) {
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.DELETE_USER_PROPERTY);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.DELETE_USER_PROPERTY_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.DELETE_USER_PROPERTY_CASE_INSENSITIVE);
         }
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for add user property sql is null");
@@ -2471,11 +2474,12 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                                  String profileName) throws UserStoreException {
 
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROP_FOR_PROFILE);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_PROP_FOR_PROFILE_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_PROP_FOR_PROFILE_CASE_INSENSITIVE);
         }
+
         if (sqlStmt == null) {
             throw new UserStoreException("The sql statement for add user property sql is null");
         }
@@ -2495,6 +2499,9 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             rs = prepStmt.executeQuery();
             while (rs.next()) {
                 value = rs.getString(1);
+                if(value == null){ // all DBs store empty String except Oracle which stores NULL
+                    value = "";
+                }
             }
             return value;
         } catch (SQLException e) {
@@ -2748,13 +2755,13 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         if (log.isDebugEnabled()) {
             log.debug("Getting roles of user: " + userName + " with filter: " + filter);
         }
-
         String sqlStmt;
-        if (isCaseSensitiveUsername()) {
+        if (isCaseSensitiveUsername()){
             sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USER_ROLE);
-        } else {
-            sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants.GET_USER_ROLE_CASE_INSENSITIVE);
+        }else {
+            sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_USER_ROLE_CASE_INSENSITIVE);
         }
+
         List<String> roles = new ArrayList<String>();
         String[] names;
         if (sqlStmt == null) {
@@ -2810,7 +2817,7 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
                 if (isCaseSensitiveUsername()) {
                     sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.ADD_SHARED_ROLE_TO_USER);
                 } else {
-                    sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
+                    sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants
                             .ADD_SHARED_ROLE_TO_USER_CASE_INSENSITIVE);
                 }
                 DatabaseUtil.udpateUserRoleMappingInBatchMode(dbConnection, sqlStmt, roleName,
@@ -2846,11 +2853,10 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
         if (isSharedGroupEnabled()) {
             // shared roles
             String sqlStmt;
-            if (isCaseSensitiveUsername()) {
+            if (isCaseSensitiveUsername()){
                 sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_SHARED_ROLES_FOR_USER);
-            } else {
-                sqlStmt = realmConfig.getUserStoreProperty(JDBCCaseInsensitiveConstants
-                        .GET_SHARED_ROLES_FOR_USER_CASE_INSENSITIVE);
+            }else {
+                sqlStmt = realmConfig.getUserStoreProperty(JDBCRealmConstants.GET_SHARED_ROLES_FOR_USER_CASE_INSENSITIVE);
             }
             String[] sharedNames = getRoleNamesWithDomain(sqlStmt, userName, tenantId, true);
 
@@ -2882,6 +2888,56 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
 
         searchCtx.setRoleName(roleNameParts[0]);
         return searchCtx;
+    }
+
+    @Override
+    public boolean isCaseSensitiveUsername(){
+        String isUsernameCaseSensitiveString = realmConfig.getUserStoreProperty(UserStoreConfigConstants
+                .CASE_SENSITIVE_USERNAME);
+        if (isUsernameCaseSensitiveString != null) {
+            return Boolean.parseBoolean(isUsernameCaseSensitiveString);
+        }else {
+            return true;
+        }
+
+    }
+
+    @Override
+    protected void handleException(Exception e, String userName) throws UserStoreException{
+        if (e instanceof InvalidAttributeValueException) {
+            String errorMessage = "One or more attribute values provided are incompatible for user: " + userName
+                    + "Please check and try again.";
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        } else if (e instanceof InvalidAttributeIdentifierException) {
+            String errorMessage = "One or more attributes you are trying to add/update are not "
+                    + "supported by underlying LDAP for user: " + userName;
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        } else if (e instanceof NoSuchAttributeException) {
+            String errorMessage = "One or more attributes you are trying to add/update are not "
+                    + "supported by underlying LDAP for user: " + userName;
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        } else if (e instanceof NamingException) {
+            String errorMessage = "Profile information could not be updated in LDAP user store for user: " + userName;
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        } else {
+            String errorMessage = "Error occurred in the underlying server for username: " + userName;
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage, e);
+            }
+            throw new UserStoreException(errorMessage, e);
+        }
     }
 
     public class RoleBreakdown {
@@ -2923,10 +2979,5 @@ public class JDBCUserStoreManager extends AbstractUserStoreManager {
             this.sharedTenantids = sharedTenantids;
         }
 
-    }
-
-    private boolean isCaseSensitiveUsername() {
-        String isUsernameCaseInsensitiveString = realmConfig.getUserStoreProperty(CASE_INSENSITIVE_USERNAME);
-        return !Boolean.parseBoolean(isUsernameCaseInsensitiveString);
     }
 }

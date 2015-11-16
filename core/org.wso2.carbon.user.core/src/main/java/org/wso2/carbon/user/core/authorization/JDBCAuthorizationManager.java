@@ -26,9 +26,6 @@ import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.claim.ClaimManager;
 import org.wso2.carbon.user.core.common.AbstractUserStoreManager;
-import org.wso2.carbon.user.core.common.DefaultRealmService;
-import org.wso2.carbon.user.core.config.RealmConfigXMLProcessor;
-import org.wso2.carbon.user.core.constants.UserCoreDBConstants;
 import org.wso2.carbon.user.core.internal.UMListenerServiceComponent;
 import org.wso2.carbon.user.core.ldap.LDAPConstants;
 import org.wso2.carbon.user.core.listener.AuthorizationManagerListener;
@@ -61,11 +58,9 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
     private AuthorizationCache authorizationCache = null;
     private UserRealm userRealm = null;
     private RealmConfiguration realmConfig = null;
-    private boolean caseInSensitiveAuthorizationRules;
     private boolean verifyByRetrievingAllUserRoles;
     private String cacheIdentifier;
     private int tenantId;
-    private String isCascadeDeleteEnabled;
 
     public JDBCAuthorizationManager(RealmConfiguration realmConfig, Map<String, Object> properties,
                                     ClaimManager claimManager, ProfileConfigurationManager profileManager, UserRealm realm,
@@ -75,11 +70,6 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
         if (!"true".equals(realmConfig.getAuthorizationManagerProperty(UserCoreConstants.
                 RealmConfig.PROPERTY_AUTHORIZATION_CACHE_ENABLED))) {
             authorizationCache.disableCache();
-        }
-
-        if (!"true".equals(realmConfig.getAuthorizationManagerProperty(UserCoreConstants.
-                RealmConfig.PROPERTY_CASE_SENSITIVITY))) {
-            caseInSensitiveAuthorizationRules = true;
         }
 
         if ("true".equals(realmConfig.getAuthorizationManagerProperty(GET_ALL_ROLES_OF_USER_ENABLED))) {
@@ -100,9 +90,6 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
             dataSource = DatabaseUtil.getRealmDataSource(realmConfig);
             properties.put(UserCoreConstants.DATA_SOURCE, dataSource);
         }
-
-        this.isCascadeDeleteEnabled = realmConfig.getRealmProperty(UserCoreDBConstants.CASCADE_DELETE_ENABLED);
-
         this.permissionTree = new PermissionTree(cacheIdentifier, tenantId, dataSource);
         this.realmConfig = realmConfig;
         this.userRealm = realm;
@@ -152,6 +139,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                 return false;
             }
         }
+
 
         try {
             Boolean userAllowed = authorizationCache.isUserAuthorized(cacheIdentifier,
@@ -350,6 +338,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
 
             List<String> lstPermissions = new ArrayList<String>();
             String[] roles = this.userRealm.getUserStoreManager().getRoleListOfUser(userName);
+
             permissionTree.updatePermissionTree();
             permissionTree.getUIResourcesForRoles(roles, lstPermissions, permissionRootPath);
             String[] permissions = lstPermissions.toArray(new String[lstPermissions.size()]);
@@ -402,6 +391,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
             log.error("Invalid data provided at authorization code");
             throw new UserStoreException("Invalid data provided");
         }
+
         addAuthorizationForRole(roleName, resourceId, action, UserCoreConstants.ALLOW, true);
     }
 
@@ -419,6 +409,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
             log.error("Invalid data provided at authorization code");
             throw new UserStoreException("Invalid data provided");
         }
+
         addAuthorizationForRole(roleName, resourceId, action, UserCoreConstants.DENY, true);
     }
 
@@ -473,12 +464,6 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
         Connection dbConnection = null;
         try {
             dbConnection = getDBConnection();
-            if(isCascadeDeleteEnabled == null || !Boolean.parseBoolean(isCascadeDeleteEnabled)) {
-                DatabaseUtil.updateDatabase(dbConnection,
-                        DBConstants.ON_DELETE_PERMISSION_UM_ROLE_PERMISSIONS_SQL, resourceId, tenantId);
-                DatabaseUtil.updateDatabase(dbConnection,
-                        DBConstants.ON_DELETE_PERMISSION_UM_USER_PERMISSIONS_SQL, resourceId, tenantId);
-            }
             DatabaseUtil.updateDatabase(dbConnection, DBConstants.DELETE_PERMISSION_SQL,
                     resourceId, tenantId);
             permissionTree.clearResourceAuthorizations(resourceId);
@@ -620,7 +605,6 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
             }
         }
 
-
         /*need to clear tenant authz cache once role authorization is removed, currently there is
         no way to remove cache entry by role.*/
         authorizationCache.clearCacheByTenant(this.tenantId);
@@ -657,7 +641,6 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                 return;
             }
         }
-
         this.authorizationCache.clearCacheByTenant(tenantId);
 
         Connection dbConnection = null;
@@ -771,7 +754,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                 domain = UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME;
             }
 
-            prepStmt = dbConnection.prepareStatement(UserCoreDBConstants.IS_EXISTING_ROLE_PERMISSION_MAPPING);
+            prepStmt = dbConnection.prepareStatement(DBConstants.IS_EXISTING_ROLE_PERMISSION_MAPPING);
             prepStmt.setString(1, UserCoreUtil.removeDomainFromName(roleName));
             prepStmt.setString(2, resourceId);
             prepStmt.setString(3, action);
@@ -829,8 +812,10 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                     dbConnection.rollback();
                 }
             } catch (SQLException e1) {
-                throw new UserStoreException("Error in connection rollback ", e1);
+                throw new UserStoreException("Error in DB connection rollback for role : " + roleName + " & resource id : " + resourceId +
+                        " & action : " + action + " & allow : " + " & update cache : " + updateCache, e1);
             }
+
             if (log.isDebugEnabled()) {
                 log.debug("Error! " + e.getMessage(), e);
             }
@@ -865,7 +850,7 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                 this.addPermissionId(dbConnection, resourceId, action);
                 permissionId = this.getPermissionId(dbConnection, resourceId, action);
             }
-            prepStmt = dbConnection.prepareStatement(UserCoreDBConstants.IS_EXISTING_USER_PERMISSION_MAPPING);
+            prepStmt = dbConnection.prepareStatement(DBConstants.IS_EXISTING_USER_PERMISSION_MAPPING);
             prepStmt.setString(1, userName);
             prepStmt.setString(2, resourceId);
             prepStmt.setString(3, action);
@@ -919,7 +904,8 @@ public class JDBCAuthorizationManager implements AuthorizationManager {
                     dbConnection.rollback();
                 }
             } catch (SQLException e1) {
-                throw new UserStoreException("Error in connection rollback ", e1);
+                throw new UserStoreException("Error in DB connection rollback for user : " + userName + " & resource id : " + resourceId +
+                        " & action : " + action + " & allow : " + " & update cache : " + updateCache, e1);
             }
             if (log.isDebugEnabled()) {
                 log.debug("Error! " + e.getMessage(), e);
