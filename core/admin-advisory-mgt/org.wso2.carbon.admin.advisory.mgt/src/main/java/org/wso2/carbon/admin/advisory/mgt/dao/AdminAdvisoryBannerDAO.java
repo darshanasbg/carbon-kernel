@@ -20,6 +20,9 @@ package org.wso2.carbon.admin.advisory.mgt.dao;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
 
+/**
+ * This interface is to manage storage of the Admin Advisory Banner configurations.
+ */
 public interface AdminAdvisoryBannerDAO {
 
     void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner) throws AdminAdvisoryMgtException;

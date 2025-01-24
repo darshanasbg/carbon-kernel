@@ -19,8 +19,12 @@
 package org.wso2.carbon.admin.advisory.mgt.internal;
 
 import org.wso2.carbon.admin.advisory.mgt.dao.AdminAdvisoryBannerDAO;
+import org.wso2.carbon.admin.advisory.mgt.dao.RegistryBasedAdminBannerDAO;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This singleton data holder contains all the data required by the admin advisory management OSGi bundle.
@@ -30,7 +34,7 @@ public class AdminAdvisoryManagementDataHolder {
     private static AdminAdvisoryManagementDataHolder instance = new AdminAdvisoryManagementDataHolder();
     private RegistryService registryService;
     private RealmService realmService;
-    private AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService;
+    private List<AdminAdvisoryBannerDAO> adminAdvisoryBannerDAOServices = new ArrayList<>();
 
     /**
      * Get the AdminAdvisoryManagementDataHolder instance.
@@ -89,7 +93,8 @@ public class AdminAdvisoryManagementDataHolder {
      */
     public AdminAdvisoryBannerDAO getAdminAdvisoryBannerDAOService() {
 
-        return adminAdvisoryBannerDAOService;
+        AdminAdvisoryBannerDAO adminAdvisoryBannerDAO = adminAdvisoryBannerDAOServices.get(0);
+        return adminAdvisoryBannerDAO != null ? adminAdvisoryBannerDAO : new RegistryBasedAdminBannerDAO();
     }
 
     /**
@@ -100,6 +105,6 @@ public class AdminAdvisoryManagementDataHolder {
     public void setAdminAdvisoryBannerDAOService(
             AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService) {
 
-        this.adminAdvisoryBannerDAOService = adminAdvisoryBannerDAOService;
+        adminAdvisoryBannerDAOServices.add(adminAdvisoryBannerDAOService);
     }
 }
