@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.admin.advisory.mgt.internal;
 
+import org.wso2.carbon.admin.advisory.mgt.dao.AdminAdvisoryBannerDAO;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
 
@@ -29,6 +30,7 @@ public class AdminAdvisoryManagementDataHolder {
     private static AdminAdvisoryManagementDataHolder instance = new AdminAdvisoryManagementDataHolder();
     private RegistryService registryService;
     private RealmService realmService;
+    private AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService;
 
     /**
      * Get the AdminAdvisoryManagementDataHolder instance.
@@ -78,5 +80,26 @@ public class AdminAdvisoryManagementDataHolder {
     public void setRealmService(RealmService realmService) {
 
         this.realmService = realmService;
+    }
+
+    /**
+     * Get the AdminAdvisoryBannerDAO service.
+     *
+     * @return AdminAdvisoryBannerDAO instance.
+     */
+    public AdminAdvisoryBannerDAO getAdminAdvisoryBannerDAOService() {
+
+        return adminAdvisoryBannerDAOService;
+    }
+
+    /**
+     * Set the AdminAdvisoryBannerDAO service.
+     *
+     * @param adminAdvisoryBannerDAOService AdminAdvisoryBannerDAO instance.
+     */
+    public void setAdminAdvisoryBannerDAOService(
+            AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService) {
+
+        this.adminAdvisoryBannerDAOService = adminAdvisoryBannerDAOService;
     }
 }
