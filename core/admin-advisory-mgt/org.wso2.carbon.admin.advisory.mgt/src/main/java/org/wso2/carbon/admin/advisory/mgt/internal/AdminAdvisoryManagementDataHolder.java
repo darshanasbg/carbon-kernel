@@ -27,7 +27,7 @@ import org.wso2.carbon.user.core.service.RealmService;
  */
 public class AdminAdvisoryManagementDataHolder {
 
-    private static final AdminAdvisoryManagementDataHolder INSTANCE = new AdminAdvisoryManagementDataHolder();
+    private static AdminAdvisoryManagementDataHolder instance = new AdminAdvisoryManagementDataHolder();
     private RegistryService registryService;
     private RealmService realmService;
     private AdminAdvisoryBannerDAO adminAdvisoryBannerDAO;
@@ -39,7 +39,7 @@ public class AdminAdvisoryManagementDataHolder {
      */
     public static AdminAdvisoryManagementDataHolder getInstance() {
 
-        return INSTANCE;
+        return instance;
     }
 
     /**
