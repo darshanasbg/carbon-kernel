@@ -20,9 +20,12 @@ package org.wso2.carbon.admin.advisory.mgt.service;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants;
+import org.wso2.carbon.admin.advisory.mgt.dao.AdminAdvisoryBannerDAO;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
 import org.wso2.carbon.admin.advisory.mgt.internal.AdminAdvisoryManagementDataHolder;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 
 /**
  * This service is to configure the Admin Advisory Management functionality.
@@ -38,8 +41,14 @@ public class AdminAdvisoryManagementService {
      */
     public void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner) throws AdminAdvisoryMgtException {
 
-        AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService().saveAdminAdvisoryConfig(
-                adminAdvisoryBanner);
+        AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService =
+                AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService();
+        String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+        adminAdvisoryBannerDAOService.saveAdminAdvisoryConfig(adminAdvisoryBanner, tenantDomain);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Admin advisory banner configurations successfully stored in storage: " +
+                    adminAdvisoryBannerDAOService.getClass() + " for tenant: " + tenantDomain + ".");
+        }
     }
 
     /**
@@ -49,7 +58,26 @@ public class AdminAdvisoryManagementService {
      */
     public AdminAdvisoryBannerDTO getAdminAdvisoryConfig() throws AdminAdvisoryMgtException {
 
-        return AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService()
-                .loadAdminAdvisoryConfig();
+        AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService =
+                AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService();
+        String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+        AdminAdvisoryBannerDTO adminAdvisoryBanner = adminAdvisoryBannerDAOService.loadAdminAdvisoryConfig(tenantDomain);
+
+        if (adminAdvisoryBanner == null) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Admin advisory banner configurations are not available in storage: " +
+                        adminAdvisoryBannerDAOService.getClass() +
+                        ". Hence, default configurations will be used for tenant: " + tenantDomain + ".");
+            }
+            adminAdvisoryBanner = new AdminAdvisoryBannerDTO();
+            adminAdvisoryBanner.setEnableBanner(AdminAdvisoryManagementConstants.ENABLE_BANNER_BY_DEFAULT);
+            adminAdvisoryBanner.setBannerContent(AdminAdvisoryManagementConstants.DEFAULT_BANNER_CONTENT);
+        } else {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Admin advisory banner configurations successfully loaded from storage: " +
+                        adminAdvisoryBannerDAOService.getClass() + " for tenant: " + tenantDomain + ".");
+            }
+        }
+        return adminAdvisoryBanner;
     }
 }

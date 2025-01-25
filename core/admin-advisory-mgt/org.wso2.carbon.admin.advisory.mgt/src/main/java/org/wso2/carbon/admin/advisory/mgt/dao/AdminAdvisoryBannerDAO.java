@@ -25,8 +25,9 @@ import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
  */
 public interface AdminAdvisoryBannerDAO {
 
-    void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner) throws AdminAdvisoryMgtException;
+    void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner, String tenantDomain)
+            throws AdminAdvisoryMgtException;
 
-    AdminAdvisoryBannerDTO loadAdminAdvisoryConfig() throws AdminAdvisoryMgtException;
+    AdminAdvisoryBannerDTO loadAdminAdvisoryConfig(String tenantDomain) throws AdminAdvisoryMgtException;
 
 }

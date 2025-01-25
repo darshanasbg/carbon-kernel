@@ -5,13 +5,13 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
-import org.wso2.carbon.admin.advisory.mgt.internal.AdminAdvisoryManagementDataHolder;
-import org.wso2.carbon.admin.advisory.mgt.service.AdminAdvisoryManagementService;
 import org.wso2.carbon.admin.advisory.mgt.util.RegistryResourceConfig;
-import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
 
+/**
+ * This class is used to manage storage of the Admin Advisory Banner configurations in the registry.
+ */
 public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
 
     protected static final Log LOG = LogFactory.getLog(RegistryBasedAdminBannerDAO.class);
@@ -19,30 +19,30 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
     private final RegistryResourceConfig registryResourceConfig = new RegistryResourceConfig();
 
     @Override
-    public void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner) throws AdminAdvisoryMgtException {
+    public void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner, String tenantDomain)
+            throws AdminAdvisoryMgtException {
 
-        AdminAdvisoryBannerDAO adminAdvisoryBannerDAO = AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService();
+        Resource bannerResource = createAdminBannerRegistryResource(adminAdvisoryBanner);
+        registryResourceConfig.putRegistryResource(bannerResource, ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Admin advisory banner configuration saved successfully in registry for tenant: " + tenantDomain);
+        }
     }
 
     @Override
-    public AdminAdvisoryBannerDTO loadAdminAdvisoryConfig() throws AdminAdvisoryMgtException {
+    public AdminAdvisoryBannerDTO loadAdminAdvisoryConfig(String tenantDomain) throws AdminAdvisoryMgtException {
 
-        AdminAdvisoryBannerDTO adminAdvisoryBanner;
-        String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
-
-        Resource registryResource = registryResourceConfig.getRegistryResource(ADMIN_ADVISORY_BANNER_PATH,
-                tenantDomain);
-        if (registryResource != null) {
-            adminAdvisoryBanner = createAdminAdvisoryBannerDTO(registryResource);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Admin advisory banner configuration loaded successfully for tenant: " + tenantDomain);
-            }
-        } else {
-            adminAdvisoryBanner = new AdminAdvisoryBannerDTO();
-            adminAdvisoryBanner.setEnableBanner(AdminAdvisoryManagementConstants.ENABLE_BANNER_BY_DEFAULT);
-            adminAdvisoryBanner.setBannerContent(AdminAdvisoryManagementConstants.DEFAULT_BANNER_CONTENT);
+        Resource registryResource =
+                registryResourceConfig.getRegistryResource(ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
+        if (registryResource == null) {
+            return null;
         }
 
+        AdminAdvisoryBannerDTO adminAdvisoryBanner = createAdminAdvisoryBannerDTO(registryResource);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Admin advisory banner configuration loaded successfully from registry for tenant: " +
+                    tenantDomain);
+        }
         return adminAdvisoryBanner;
     }
 

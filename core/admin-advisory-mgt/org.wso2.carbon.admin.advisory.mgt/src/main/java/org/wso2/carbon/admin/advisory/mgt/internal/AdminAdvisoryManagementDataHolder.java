@@ -93,8 +93,11 @@ public class AdminAdvisoryManagementDataHolder {
      */
     public AdminAdvisoryBannerDAO getAdminAdvisoryBannerDAOService() {
 
-        AdminAdvisoryBannerDAO adminAdvisoryBannerDAO = adminAdvisoryBannerDAOServices.get(0);
-        return adminAdvisoryBannerDAO != null ? adminAdvisoryBannerDAO : new RegistryBasedAdminBannerDAO();
+        if (adminAdvisoryBannerDAOServices.isEmpty()) {
+            return new RegistryBasedAdminBannerDAO();
+        } else {
+            return adminAdvisoryBannerDAOServices.get(0);
+        }
     }
 
     /**
