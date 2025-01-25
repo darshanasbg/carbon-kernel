@@ -21,9 +21,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
-import org.wso2.carbon.admin.advisory.mgt.util.RegistryResourceConfig;
+import org.wso2.carbon.admin.advisory.mgt.internal.AdminAdvisoryManagementDataHolder;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
+import org.wso2.carbon.registry.core.service.RegistryService;
+import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.core.service.RealmService;
 
 import static org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants.BANNER_CONTENT;
 import static org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants.ENABLE_BANNER;
@@ -33,16 +39,22 @@ import static org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManageme
  */
 public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
 
-    protected static final Log LOG = LogFactory.getLog(RegistryBasedAdminBannerDAO.class);
+    private static final Log LOG = LogFactory.getLog(RegistryBasedAdminBannerDAO.class);
+    private static final RegistryService registryService =
+            AdminAdvisoryManagementDataHolder.getInstance().getRegistryService();
+    private static final RealmService realmService = AdminAdvisoryManagementDataHolder.getInstance().getRealmService();
+
     private static final String ADMIN_ADVISORY_BANNER_PATH = "identity/config/adminAdvisoryBanner";
-    private final RegistryResourceConfig registryResourceConfig = new RegistryResourceConfig();
+    private static final String MSG_RESOURCE_PERSIST = "Resource persisted at %s in %s tenant registry.";
+    private static final String ERROR_PERSIST_RESOURCE = "Error persisting registry resource of %s tenant at %s";
+    private static final String ERROR_GET_RESOURCE = "Error retrieving registry resource from %s for tenant %s.";
 
     @Override
     public void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner, String tenantDomain)
             throws AdminAdvisoryMgtException {
 
         Resource bannerResource = createAdminBannerRegistryResource(adminAdvisoryBanner);
-        registryResourceConfig.putRegistryResource(bannerResource, ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
+        putRegistryResource(bannerResource, ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Admin advisory banner configuration saved successfully in registry for tenant: " + tenantDomain);
         }
@@ -51,7 +63,7 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
     @Override
     public AdminAdvisoryBannerDTO loadAdminAdvisoryConfig(String tenantDomain) throws AdminAdvisoryMgtException {
 
-        Resource resource = registryResourceConfig.getRegistryResource(ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
+        Resource resource = getRegistryResource(ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
         if (resource == null) {
             return null;
         }
@@ -91,5 +103,66 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
         adminAdvisoryBannerDTO.setEnableBanner(Boolean.parseBoolean(enableBanner));
         adminAdvisoryBannerDTO.setBannerContent(content);
         return adminAdvisoryBannerDTO;
+    }
+
+    /**
+     * This method is used to save the tenant specific registry resource.
+     *
+     * @param identityResource Resource to be saved.
+     * @param path             Path of the resource.
+     * @param tenantDomain     Tenant domain.
+     * @throws AdminAdvisoryMgtException Error while saving the registry resource.
+     */
+    private void putRegistryResource(Resource identityResource, String path, String tenantDomain)
+            throws AdminAdvisoryMgtException {
+
+        startTenantFlow(tenantDomain);
+        try {
+            int tenantId = realmService.getTenantManager().getTenantId(tenantDomain);
+            Registry registry = registryService.getConfigSystemRegistry(tenantId);
+            registry.put(path, identityResource);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(String.format(MSG_RESOURCE_PERSIST, path, tenantDomain));
+            }
+        } catch (RegistryException | UserStoreException e) {
+            String errorMsg = String.format(ERROR_PERSIST_RESOURCE, tenantDomain, path);
+            throw new AdminAdvisoryMgtException(errorMsg, e);
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+    /**
+     * This method is used to get the tenant specific registry resource.
+     *
+     * @param path         Path of the resource.
+     * @param tenantDomain Tenant domain.
+     * @return Resource from the registry.
+     * @throws AdminAdvisoryMgtException Error while saving the registry resource.
+     */
+    private Resource getRegistryResource(String path, String tenantDomain) throws AdminAdvisoryMgtException {
+
+        startTenantFlow(tenantDomain);
+        Resource resource = null;
+        try {
+            int tenantId = realmService.getTenantManager().getTenantId(tenantDomain);
+            Registry registry = registryService.getConfigSystemRegistry(tenantId);
+
+            if (registry.resourceExists(path)) {
+                resource = registry.get(path);
+            }
+        } catch (RegistryException | UserStoreException e) {
+            String errorMsg = String.format(ERROR_GET_RESOURCE, path, tenantDomain);
+            throw new AdminAdvisoryMgtException(errorMsg, e);
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+        return resource;
+    }
+
+    private void startTenantFlow(String tenantDomain) {
+
+        PrivilegedCarbonContext.startTenantFlow();
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
     }
 }
