@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants;
 import org.wso2.carbon.admin.advisory.mgt.dao.AdminAdvisoryBannerDAO;
+import org.wso2.carbon.admin.advisory.mgt.dao.RegistryBasedAdminBannerDAO;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
 import org.wso2.carbon.admin.advisory.mgt.internal.AdminAdvisoryManagementDataHolder;
@@ -32,7 +33,12 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
  */
 public class AdminAdvisoryManagementService {
 
-    protected static final Log LOG = LogFactory.getLog(AdminAdvisoryManagementService.class);
+    private static final Log LOG = LogFactory.getLog(AdminAdvisoryManagementService.class);
+    private static final AdminAdvisoryBannerDAO defaultAdminAdvisoryBannerDAO = new RegistryBasedAdminBannerDAO();
+    private static final AdminAdvisoryBannerDAO adminAdvisoryBannerDAO =
+            AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService() != null ?
+                    AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService() :
+                    defaultAdminAdvisoryBannerDAO;
 
     /**
      * This method is used to save the Admin advisory banner configurations which is specific to tenant.
@@ -41,13 +47,11 @@ public class AdminAdvisoryManagementService {
      */
     public void saveAdminAdvisoryConfig(AdminAdvisoryBannerDTO adminAdvisoryBanner) throws AdminAdvisoryMgtException {
 
-        AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService =
-                AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService();
         String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
-        adminAdvisoryBannerDAOService.saveAdminAdvisoryConfig(adminAdvisoryBanner, tenantDomain);
+        adminAdvisoryBannerDAO.saveAdminAdvisoryConfig(adminAdvisoryBanner, tenantDomain);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Admin advisory banner configurations successfully stored in storage: " +
-                    adminAdvisoryBannerDAOService.getClass() + " for tenant: " + tenantDomain + ".");
+                    adminAdvisoryBannerDAO.getClass() + " for tenant: " + tenantDomain + ".");
         }
     }
 
@@ -58,15 +62,13 @@ public class AdminAdvisoryManagementService {
      */
     public AdminAdvisoryBannerDTO getAdminAdvisoryConfig() throws AdminAdvisoryMgtException {
 
-        AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService =
-                AdminAdvisoryManagementDataHolder.getInstance().getAdminAdvisoryBannerDAOService();
         String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
-        AdminAdvisoryBannerDTO adminAdvisoryBanner = adminAdvisoryBannerDAOService.loadAdminAdvisoryConfig(tenantDomain);
+        AdminAdvisoryBannerDTO adminAdvisoryBanner = adminAdvisoryBannerDAO.loadAdminAdvisoryConfig(tenantDomain);
 
         if (adminAdvisoryBanner == null) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Admin advisory banner configurations are not available in storage: " +
-                        adminAdvisoryBannerDAOService.getClass() +
+                        adminAdvisoryBannerDAO.getClass() +
                         ". Hence, default configurations will be used for tenant: " + tenantDomain + ".");
             }
             adminAdvisoryBanner = new AdminAdvisoryBannerDTO();
@@ -75,7 +77,7 @@ public class AdminAdvisoryManagementService {
         } else {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Admin advisory banner configurations successfully loaded from storage: " +
-                        adminAdvisoryBannerDAOService.getClass() + " for tenant: " + tenantDomain + ".");
+                        adminAdvisoryBannerDAO.getClass() + " for tenant: " + tenantDomain + ".");
             }
         }
         return adminAdvisoryBanner;

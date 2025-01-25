@@ -96,7 +96,7 @@ public class AdminAdvisoryManagementServiceComponent {
 
     @Reference(
             name = "admin.advisory.banner.dao.service",
-            cardinality = ReferenceCardinality.MULTIPLE,
+            cardinality = ReferenceCardinality.OPTIONAL,
             policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetAdminAdvisoryBannerDAOService")
     protected void setAdminAdvisoryBannerDAOService(AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService) {

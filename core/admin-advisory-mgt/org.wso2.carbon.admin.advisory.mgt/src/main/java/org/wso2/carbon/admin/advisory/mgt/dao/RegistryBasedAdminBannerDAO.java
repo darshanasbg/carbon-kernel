@@ -19,12 +19,14 @@ package org.wso2.carbon.admin.advisory.mgt.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants;
 import org.wso2.carbon.admin.advisory.mgt.dto.AdminAdvisoryBannerDTO;
 import org.wso2.carbon.admin.advisory.mgt.exception.AdminAdvisoryMgtException;
 import org.wso2.carbon.admin.advisory.mgt.util.RegistryResourceConfig;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
+
+import static org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants.BANNER_CONTENT;
+import static org.wso2.carbon.admin.advisory.mgt.constants.AdminAdvisoryManagementConstants.ENABLE_BANNER;
 
 /**
  * This class is used to manage storage of the Admin Advisory Banner configurations in the registry.
@@ -49,13 +51,12 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
     @Override
     public AdminAdvisoryBannerDTO loadAdminAdvisoryConfig(String tenantDomain) throws AdminAdvisoryMgtException {
 
-        Resource registryResource =
-                registryResourceConfig.getRegistryResource(ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
-        if (registryResource == null) {
+        Resource resource = registryResourceConfig.getRegistryResource(ADMIN_ADVISORY_BANNER_PATH, tenantDomain);
+        if (resource == null) {
             return null;
         }
 
-        AdminAdvisoryBannerDTO adminAdvisoryBanner = createAdminAdvisoryBannerDTO(registryResource);
+        AdminAdvisoryBannerDTO adminAdvisoryBanner = createAdminAdvisoryBannerDTO(resource);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Admin advisory banner configuration loaded successfully from registry for tenant: " +
                     tenantDomain);
@@ -70,13 +71,9 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
      */
     private Resource createAdminBannerRegistryResource(AdminAdvisoryBannerDTO adminAdvisoryBannerDTO) {
 
-        // Set resource properties.
         Resource bannerResource = new ResourceImpl();
-        bannerResource.setProperty(AdminAdvisoryManagementConstants.ENABLE_BANNER,
-                String.valueOf(adminAdvisoryBannerDTO.getEnableBanner()));
-        bannerResource.setProperty(AdminAdvisoryManagementConstants.BANNER_CONTENT,
-                String.valueOf(adminAdvisoryBannerDTO.getBannerContent()));
-
+        bannerResource.setProperty(ENABLE_BANNER, String.valueOf(adminAdvisoryBannerDTO.getEnableBanner()));
+        bannerResource.setProperty(BANNER_CONTENT, String.valueOf(adminAdvisoryBannerDTO.getBannerContent()));
         return bannerResource;
     }
 
@@ -87,13 +84,12 @@ public class RegistryBasedAdminBannerDAO implements AdminAdvisoryBannerDAO {
      */
     private AdminAdvisoryBannerDTO createAdminAdvisoryBannerDTO(Resource bannerResource) {
 
+        String enableBanner = bannerResource.getProperty(ENABLE_BANNER);
+        String content = bannerResource.getProperty(BANNER_CONTENT);
+
         AdminAdvisoryBannerDTO adminAdvisoryBannerDTO = new AdminAdvisoryBannerDTO();
-        String enableBanner = bannerResource.getProperty(AdminAdvisoryManagementConstants.ENABLE_BANNER);
-        String content = bannerResource.getProperty(AdminAdvisoryManagementConstants.BANNER_CONTENT);
         adminAdvisoryBannerDTO.setEnableBanner(Boolean.parseBoolean(enableBanner));
         adminAdvisoryBannerDTO.setBannerContent(content);
-
         return adminAdvisoryBannerDTO;
     }
-
 }

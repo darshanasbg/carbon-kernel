@@ -19,22 +19,18 @@
 package org.wso2.carbon.admin.advisory.mgt.internal;
 
 import org.wso2.carbon.admin.advisory.mgt.dao.AdminAdvisoryBannerDAO;
-import org.wso2.carbon.admin.advisory.mgt.dao.RegistryBasedAdminBannerDAO;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This singleton data holder contains all the data required by the admin advisory management OSGi bundle.
  */
 public class AdminAdvisoryManagementDataHolder {
 
-    private static AdminAdvisoryManagementDataHolder instance = new AdminAdvisoryManagementDataHolder();
+    private static final AdminAdvisoryManagementDataHolder INSTANCE = new AdminAdvisoryManagementDataHolder();
     private RegistryService registryService;
     private RealmService realmService;
-    private List<AdminAdvisoryBannerDAO> adminAdvisoryBannerDAOServices = new ArrayList<>();
+    private AdminAdvisoryBannerDAO adminAdvisoryBannerDAO;
 
     /**
      * Get the AdminAdvisoryManagementDataHolder instance.
@@ -43,7 +39,7 @@ public class AdminAdvisoryManagementDataHolder {
      */
     public static AdminAdvisoryManagementDataHolder getInstance() {
 
-        return instance;
+        return INSTANCE;
     }
 
     /**
@@ -93,11 +89,7 @@ public class AdminAdvisoryManagementDataHolder {
      */
     public AdminAdvisoryBannerDAO getAdminAdvisoryBannerDAOService() {
 
-        if (adminAdvisoryBannerDAOServices.isEmpty()) {
-            return new RegistryBasedAdminBannerDAO();
-        } else {
-            return adminAdvisoryBannerDAOServices.get(0);
-        }
+        return adminAdvisoryBannerDAO;
     }
 
     /**
@@ -108,6 +100,6 @@ public class AdminAdvisoryManagementDataHolder {
     public void setAdminAdvisoryBannerDAOService(
             AdminAdvisoryBannerDAO adminAdvisoryBannerDAOService) {
 
-        adminAdvisoryBannerDAOServices.add(adminAdvisoryBannerDAOService);
+        adminAdvisoryBannerDAO = adminAdvisoryBannerDAOService;
     }
 }
