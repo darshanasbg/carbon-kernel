@@ -29,5 +29,4 @@ public interface AdminAdvisoryBannerDAO {
             throws AdminAdvisoryMgtException;
 
     AdminAdvisoryBannerDTO loadAdminAdvisoryConfig(String tenantDomain) throws AdminAdvisoryMgtException;
-
 }
